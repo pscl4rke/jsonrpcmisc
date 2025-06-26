@@ -4,45 +4,66 @@ from typing import Any, Dict, List
 
 import json
 
+from . import erroring
 from . import modelling
 
 
-def format_response(response: modelling.Response) -> str:
-    return json.dumps(fields_for_response(response))
+def format_message(message: modelling.Message) -> str:
+    return json.dumps(fields_for_message(message))
 
 
-def format_batch(batch: List[modelling.Response]) -> str:
+def format_batch(batch: List[modelling.Message]) -> str:
     return json.dumps([
-        fields_for_response(response)
-        for response in batch
+        fields_for_message(message)
+        for message in batch
     ])
 
 
-def fields_for_response(response: modelling.Response) -> Dict[str, Any]:
-    if isinstance(response, modelling.ResultMessage):
-        return fields_for_result_response(response)
-    elif isinstance(response, modelling.ErrorMessage):
-        return fields_for_error_response(response)
-    else:
-        raise NotImplementedError(str(type(response)))
+def fields_for_message(message: modelling.Message) -> Dict[str, Any]:
+    if isinstance(message, modelling.QueryMessage):
+        return fields_for_query_message(message)
+    if isinstance(message, modelling.NotificationMessage):
+        return fields_for_notfication_message(message)
+    if isinstance(message, modelling.ResultMessage):
+        return fields_for_result_message(message)
+    if isinstance(message, modelling.ErrorMessage):
+        return fields_for_error_message(message)
+    raise NotImplementedError(str(type(message)))
 
 
-def fields_for_result_response(response: modelling.ResultMessage) -> Dict[str, Any]:
+def fields_for_query_message(message: modelling.QueryMessage) -> Dict[str, Any]:
     fields: Dict[str, Any] = {"jsonrpc": "2.0"}
-    fields["result"] = response.result
-    fields["id"] = response.id
+    fields["method"] = message.method
+    if message.params is not None:
+        fields["params"] = message.params
+    fields["id"] = message.id
     return fields
 
 
-def fields_for_error_response(response: modelling.ErrorMessage) -> Dict[str, Any]:
+def fields_for_notfication_message(message: modelling.NotificationMessage) -> Dict[str, Any]:
     fields: Dict[str, Any] = {"jsonrpc": "2.0"}
-    fields["error"] = fields_for_error(response.error)
-    if response.id is not None:
-        fields["id"] = response.id
+    fields["method"] = message.method
+    if message.params is not None:
+        fields["params"] = message.params
     return fields
 
 
-def fields_for_error(error: modelling.JsonRpcError) -> Dict[str, Any]:
+def fields_for_result_message(message: modelling.ResultMessage) -> Dict[str, Any]:
+    fields: Dict[str, Any] = {"jsonrpc": "2.0"}
+    fields["result"] = message.result
+    fields["id"] = message.id
+    return fields
+
+
+def fields_for_error_message(message: modelling.ErrorMessage) -> Dict[str, Any]:
+    fields: Dict[str, Any] = {"jsonrpc": "2.0"}
+    fields["error"] = fields_for_error(message.error)
+    if message.id is not None:
+        fields["id"] = message.id
+    return fields
+
+
+def fields_for_error(error: erroring.JsonRpcError) -> Dict[str, Any]:
     fields: Dict[str, Any] = {}
     fields["code"] = error.code
     fields["message"] = error.message

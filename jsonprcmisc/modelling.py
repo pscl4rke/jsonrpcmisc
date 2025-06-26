@@ -34,4 +34,4 @@ class ResultMessage:
     id: Identifier
 
 
-Response = ErrorMessage | ResultMessage
+Message = QueryMessage | NotificationMessage | ErrorMessage | ResultMessage
