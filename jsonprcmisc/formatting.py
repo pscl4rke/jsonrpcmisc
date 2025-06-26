@@ -19,22 +19,22 @@ def format_batch(batch: List[modelling.Response]) -> str:
 
 
 def fields_for_response(response: modelling.Response) -> Dict[str, Any]:
-    if isinstance(response, modelling.ResultResponse):
+    if isinstance(response, modelling.ResultMessage):
         return fields_for_result_response(response)
-    elif isinstance(response, modelling.ErrorResponse):
+    elif isinstance(response, modelling.ErrorMessage):
         return fields_for_error_response(response)
     else:
         raise NotImplementedError(str(type(response)))
 
 
-def fields_for_result_response(response: modelling.ResultResponse) -> Dict[str, Any]:
+def fields_for_result_response(response: modelling.ResultMessage) -> Dict[str, Any]:
     fields: Dict[str, Any] = {"jsonrpc": "2.0"}
     fields["result"] = response.result
     fields["id"] = response.id
     return fields
 
 
-def fields_for_error_response(response: modelling.ErrorResponse) -> Dict[str, Any]:
+def fields_for_error_response(response: modelling.ErrorMessage) -> Dict[str, Any]:
     fields: Dict[str, Any] = {"jsonrpc": "2.0"}
     fields["error"] = fields_for_error(response.error)
     if response.id is not None:

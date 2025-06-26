@@ -9,14 +9,14 @@ Parameters = None | list | dict
 
 
 @dataclass
-class QueryRequest:
+class QueryMessage:
     method: str
     params: Parameters
     id: Identifier
 
 
 @dataclass
-class NotificationRequest:
+class NotificationMessage:
     method: str
     params: Parameters
 
@@ -36,15 +36,15 @@ ERROR_INTERNAL_ERROR = JsonRpcError(code=-32603, message="Internal Error")
 
 
 @dataclass
-class ErrorResponse:
+class ErrorMessage:
     error: JsonRpcError
     id: Optional[Identifier] = None
 
 
 @dataclass
-class ResultResponse:
+class ResultMessage:
     result: Any
     id: Identifier
 
 
-Response = ErrorResponse | ResultResponse
+Response = ErrorMessage | ResultMessage
