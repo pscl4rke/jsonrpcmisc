@@ -45,3 +45,6 @@ class ErrorResponse:
 class ResultResponse:
     result: Any
     id: Identifier
+
+
+Response = ErrorResponse | ResultResponse
