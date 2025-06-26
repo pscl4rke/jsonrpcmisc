@@ -20,11 +20,21 @@ def parse_message(message: str | bytes) -> Parsed | List[Parsed]:
         LOG.debug("JSON error: %r", exc)
         return modelling.ErrorResponse(modelling.ERROR_PARSE)
     if isinstance(doc, list):  # a batch
-        return [decode_request(x) for x in doc]
-    return decode_request(doc)
+        return [decode_incoming(x) for x in doc]
+    return decode_incoming(doc)
 
 
-def decode_request(doc: dict) -> Parsed:
+def decode_incoming(doc: dict) -> Parsed:
+    # Be very forgiving if receiving errors from the other side:
+    if "error" in doc:
+        return modelling.ErrorResponse(
+            error=modelling.JsonRpcError(
+                code=doc.get("error", {}).get("code", -32603),
+                message=doc.get("error", {}).get("message", "(no message)"),
+                data=doc.get("error", {}).get("data", None),
+            ),
+            id=doc.get("id", None),
+        )
     id = None
     try:
         assert doc["jsonrpc"] == "2.0"

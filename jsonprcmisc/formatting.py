@@ -1,6 +1,6 @@
 
 
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 import json
 
@@ -8,10 +8,21 @@ from . import modelling
 
 
 def format_response(response: modelling.Response) -> str:
+    return json.dumps(fields_for_response(response))
+
+
+def format_batch(batch: List[modelling.Response]) -> str:
+    return json.dumps([
+        fields_for_response(response)
+        for response in batch
+    ])
+
+
+def fields_for_response(response: modelling.Response) -> Dict[str, Any]:
     if isinstance(response, modelling.ResultResponse):
-        return json.dumps(fields_for_result_response(response))
+        return fields_for_result_response(response)
     elif isinstance(response, modelling.ErrorResponse):
-        return json.dumps(fields_for_error_response(response))
+        return fields_for_error_response(response)
     else:
         raise NotImplementedError(str(type(response)))
 
