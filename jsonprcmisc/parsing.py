@@ -11,7 +11,7 @@ from . import erroring
 from . import modelling
 
 
-Parsed = modelling.QueryMessage | modelling.NotificationMessage | modelling.ErrorMessage
+Parsed = modelling.Message | modelling.IncomingError
 
 
 def parse_message(message: str | bytes) -> Parsed | List[Parsed]:
@@ -19,7 +19,7 @@ def parse_message(message: str | bytes) -> Parsed | List[Parsed]:
         doc = json.loads(message)
     except json.JSONDecodeError as exc:
         LOG.debug("JSON error: %r", exc)
-        return modelling.ErrorMessage(erroring.ERROR_PARSE)
+        return modelling.IncomingError(erroring.ERROR_PARSE)
     if isinstance(doc, list):  # a batch
         return [decode_incoming(x) for x in doc]
     return decode_incoming(doc)
@@ -53,4 +53,4 @@ def decode_incoming(doc: dict) -> Parsed:
             )
     except Exception as exc:
         LOG.debug("Invalid: %r", exc)
-        return modelling.ErrorMessage(erroring.ERROR_INVALID, id=id)
+        return modelling.IncomingError(erroring.ERROR_INVALID, id=id)

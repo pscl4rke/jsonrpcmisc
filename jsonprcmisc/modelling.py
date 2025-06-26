@@ -35,3 +35,9 @@ class ResultMessage:
 
 
 Message = QueryMessage | NotificationMessage | ErrorMessage | ResultMessage
+
+
+@dataclass
+class IncomingError:
+    error: erroring.JsonRpcError
+    id: Optional[Identifier] = None
