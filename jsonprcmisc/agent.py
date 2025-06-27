@@ -1,7 +1,7 @@
 
 
-from dataclasses import dataclass
-from typing import Callable, List, Tuple
+from dataclasses import dataclass, field
+from typing import Any, Callable, Dict, List, Tuple
 
 import asyncio
 import inspect
@@ -35,6 +35,8 @@ class Agent:
     taskgroup: asyncio.TaskGroup
     send: Callable  # this needs to be an async callable FIXME
     dispatcher: object
+    _last_id: int = 0
+    _pending: Dict[int, asyncio.Future] = field(default_factory=lambda: {})
 
     async def inject_received_message(self, message: str | bytes) -> None:
         parsed = parsing.parse_incoming(message)
@@ -73,9 +75,12 @@ class Agent:
             response = await self.run_method_until_response(parsed.id, parsed.method, parsed.params)
             await self.send(formatting.format_message(response))
         if isinstance(parsed, modelling.ResultMessage):
-            pass  # FIXME implement client behaviour
+            if parsed.id in self._pending:
+                self._pending["id"].set_result(parsed.result)
         if isinstance(parsed, modelling.ErrorMessage):
-            pass  # FIXME implement client behaviour
+            if parsed.id in self._pending:
+                exc = erroring.Fault(repr(parsed.error))
+                self._pending["id"].set_exception(exc)
 
     async def run_method_until_response(self, id: modelling.Identifier, method_name: str,
                                         params: modelling.Parameters) -> modelling.Message:
@@ -98,3 +103,20 @@ class Agent:
         except Exception:
             # FIXME what are we doing about logging, esp tracebacks?
             return modelling.ErrorMessage(error=erroring.ERROR_CATCH_ALL, id=id)
+
+    def generate_id(self) -> int:
+        self._last_id += 1
+        return self._last_id
+
+    async def call(self, method_name: str, params: modelling.Parameters,
+                   timeout: float = 10) -> Any:
+        id = self.generate_id()
+        future: asyncio.Future = asyncio.Future()
+        self._pending[id] = future
+        try:
+            self.send(modelling.QueryMessage(method_name, params, id))
+            async with asyncio.timeout(timeout):
+                await future
+            return future.result()
+        finally:
+            del self._pending[id]
