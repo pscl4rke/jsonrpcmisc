@@ -79,12 +79,14 @@ class Agent:
 
     async def run_method_until_response(self, id: modelling.Identifier, method_name: str,
                                         params: modelling.Parameters) -> modelling.Message:
-        # FIXME ensure there is no underscore prefix
+        if method_name.startswith("_"):  # underscore hides methods
+            return modelling.ErrorMessage(error=erroring.ERROR_METHOD_NOT_FOUND, id=id)
         try:
             method = getattr(self.dispatcher, method_name)
         except AttributeError:
             return modelling.ErrorMessage(error=erroring.ERROR_METHOD_NOT_FOUND, id=id)
-        # FIXME check that it is an awaitable function
+        if not inspect.iscoroutinefunction(method):
+            return modelling.ErrorMessage(error=erroring.ERROR_METHOD_NOT_FOUND, id=id)
         args, kwargs = params_to_args_or_kwargs(params)
         try:
             inspect.signature(method).bind(*args, **kwargs)
