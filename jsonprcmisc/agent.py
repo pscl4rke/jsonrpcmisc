@@ -121,3 +121,6 @@ class Agent:
             return future.result()
         finally:
             del self._pending[id]
+
+    async def serve_forever(self):
+        await asyncio.Future()
