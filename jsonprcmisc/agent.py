@@ -76,11 +76,11 @@ class Agent:
             await self.send(formatting.format_message(response))
         if isinstance(parsed, modelling.ResultMessage):
             if parsed.id in self._pending:
-                self._pending["id"].set_result(parsed.result)
+                self._pending[parsed.id].set_result(parsed.result)
         if isinstance(parsed, modelling.ErrorMessage):
             if parsed.id in self._pending:
                 exc = erroring.Fault(repr(parsed.error))
-                self._pending["id"].set_exception(exc)
+                self._pending[parsed.id].set_exception(exc)
 
     async def run_method_until_response(self, id: modelling.Identifier, method_name: str,
                                         params: modelling.Parameters) -> modelling.Message:
@@ -114,7 +114,8 @@ class Agent:
         future: asyncio.Future = asyncio.Future()
         self._pending[id] = future
         try:
-            self.send(modelling.QueryMessage(method_name, params, id))
+            await self.send(formatting.format_message(modelling.QueryMessage(
+                method_name, params, id)))
             async with asyncio.timeout(timeout):
                 await future
             return future.result()
