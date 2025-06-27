@@ -15,6 +15,11 @@ from . import parsing
 # FIXME TOTAL MESS
 
 
+# Note that JSON-RPC really has no way to specify that things
+# (esp notifications) are processed in order.  So you can't rely
+# on this for queueing things up.
+
+
 def params_to_args_or_kwargs(params: modelling.Parameters) -> Tuple[tuple, dict]:
     if params is None:
         return tuple(), dict()
@@ -37,8 +42,8 @@ class Agent:
             self.taskgroup.create_task(self.react_to_batch(parsed))
             #self.react_to_batch(parsed)
         else:
-            #self.taskgroup.create_task(self.react_to_single(parsed))
-            await self.react_to_single(parsed)
+            self.taskgroup.create_task(self.react_to_single(parsed))
+            #await self.react_to_single(parsed)
 
     async def react_to_batch(self, batch: List[parsing.Parsed]) -> None:
         responses: List[modelling.Message] = []
@@ -63,14 +68,14 @@ class Agent:
             )))
         if isinstance(parsed, modelling.NotificationMessage):
             # run but throw away the response
-            # FIXME this needs to be run in a task somehow?!?!
-            run_method_until_response(parsed.id, parsed.method, parsed.params)
+            await self.run_method_until_response(parsed.id, parsed.method, parsed.params)
         if isinstance(parsed, modelling.QueryMessage):
-            pass
+            response = await self.run_method_until_response(parsed.id, parsed.method, parsed.params)
+            await self.send(formatting.format_message(response))
         if isinstance(parsed, modelling.ResultMessage):
-            pass
+            pass  # FIXME implement client behaviour
         if isinstance(parsed, modelling.ErrorMessage):
-            pass
+            pass  # FIXME implement client behaviour
 
     async def run_method_until_response(self, id: modelling.Identifier, method_name: str,
                                         params: modelling.Parameters) -> modelling.Message:
