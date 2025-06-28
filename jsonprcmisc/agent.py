@@ -12,12 +12,16 @@ from . import modelling
 from . import parsing
 
 
-# FIXME TOTAL MESS
-
-
 # Note that JSON-RPC really has no way to specify that things
 # (esp notifications) are processed in order.  So you can't rely
 # on this for queueing things up.
+
+
+# Also note that the whole batching concept feels very impractical,
+# and will inevitably not work that well.  This implementation is
+# NOT spec-compliant because it happily receives a batch, but then
+# handles everything inside in isolation and responds to each one
+# individually.
 
 
 def params_to_args_or_kwargs(params: modelling.Parameters) -> Tuple[tuple, dict]:
@@ -41,26 +45,33 @@ class Agent:
     async def inject_received_message(self, message: str | bytes) -> None:
         parsed = parsing.parse_incoming(message)
         if isinstance(parsed, list):  # batch
-            self.taskgroup.create_task(self.react_to_batch(parsed))
-            #self.react_to_batch(parsed)
+            #self.taskgroup.create_task(self.react_to_batch(parsed))
+            for request in parsed:
+                self.taskgroup.create_task(self.react_to_single(parsed))
         else:
             self.taskgroup.create_task(self.react_to_single(parsed))
-            #await self.react_to_single(parsed)
 
-    async def react_to_batch(self, batch: List[parsing.Parsed]) -> None:
-        responses: List[modelling.Message] = []
-        #async with asyncio.TaskGroup() as batch_taskgroup:
-        #    for request in batch:
-        #        if isinstance(request, modelling.ErrorMessage):
-        #            responses.append(request)
-        #        elif isinstance(request, modelling.QueryMessage):
-        #            FIXME
-        #        elif isinstance(request, modelling.NotificationMessage):
-        #            FIXME
-        #        else:
-        #            raise NotImplementedError(repr(request))
-        if len(responses) > 0:
-            await self.send(formatting.format_batch(responses))
+    #async def react_to_batch(self, batch: List[parsing.Parsed]) -> None:
+    #    responses: List[modelling.Message] = []
+    #    async with asyncio.TaskGroup() as batch_taskgroup:
+    #        for request in batch:
+    #            if isinstance(request, modelling.ErrorMessage):
+    #                if request.id in self._pending:
+    #                    exc = erroring.Fault(repr(request.error))
+    #                    self._pending[request.id].set_exception(exc)
+    #            elif isinstance(request, modelling.ResultMessage):
+    #                if request.id in self._pending:
+    #                    self._pending[request.id].set_result(request.result)
+    #            elif isinstance(request, modelling.QueryMessage):
+    #                pass  # FIXME
+    #            elif isinstance(request, modelling.NotificationMessage):
+    #                # run but throw away the response
+    #                batch_taskgroup.create_task(self.run_method_until_response(
+    #                    request.id, request.method, request.params))
+    #            else:
+    #                raise NotImplementedError(repr(request))
+    #    if len(responses) > 0:
+    #        await self.send(formatting.format_batch(responses))
 
     async def react_to_single(self, parsed):
         if isinstance(parsed, modelling.IncomingError):
